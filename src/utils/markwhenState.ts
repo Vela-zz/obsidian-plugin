@@ -4,12 +4,12 @@ import { useColors } from './colorMap';
 
 export function getMarkwhenState(
 	mw: ParseResult,
-	rawText: string
+	rawText: string,
 ): MarkwhenState | undefined {
 	return {
 		rawText,
-		parsed: mw,
-		transformed: mw.events,
+		parsed: mw as unknown as MarkwhenState['parsed'],
+		transformed: mw.events as unknown as MarkwhenState['transformed'],
 	};
 }
 

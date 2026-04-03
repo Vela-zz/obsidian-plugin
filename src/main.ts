@@ -15,7 +15,7 @@ import { MARKWHEN_ICON } from './icons';
 import { MarkwhenView, VIEW_TYPE_MARKWHEN } from './MarkwhenView';
 import { getDefaultFileName } from './utils/fileUtils';
 import { getTemplateURL, ViewType } from './templates';
-import { parse } from '@markwhen/parser';
+import { parseWithEnhancements } from './utils/parseWithEnhancements';
 import { getAppState, getMarkwhenState } from './utils/markwhenState';
 
 interface MarkwhenPluginSettings {
@@ -106,7 +106,7 @@ export default class MarkwhenPlugin extends Plugin {
 		frame.src = getTemplateURL('timeline');
 		frame.height = `500px`;
 		frame.width = '100%';
-		const parsed = parse(mw);
+		const parsed = parseWithEnhancements(mw);
 		frame.onload = () => {
 			frame.contentWindow?.postMessage(
 				{
