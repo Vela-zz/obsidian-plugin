@@ -4,7 +4,7 @@ import { useColors } from './colorMap';
 
 export function getMarkwhenState(
 	mw: ParseResult,
-	rawText: string
+	rawText: string,
 ): MarkwhenState | undefined {
 	return {
 		rawText,

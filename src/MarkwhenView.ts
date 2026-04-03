@@ -28,6 +28,27 @@ export class MarkwhenView extends MarkdownView {
 	views: Partial<{ [vt in ViewType]: HTMLIFrameElement }>;
 	codemirrorPlugin: ViewPlugin<MarkwhenCodemirrorPlugin>;
 	updateId = 0;
+	private extensionsRegistered = false;
+
+	private refreshVisualization() {
+		const text = this.getCodeMirror()?.state.doc.sliceString(0) ?? this.data;
+		this.updateVisualization(parseWithEnhancements(text));
+	}
+
+	private ensureExtensionsRegistered(attempt = 0) {
+		if (this.extensionsRegistered) {
+			return;
+		}
+		if (this.getCodeMirror()) {
+			this.registerExtensions();
+			this.refreshVisualization();
+			window.setTimeout(() => this.refreshVisualization(), 150);
+			return;
+		}
+		if (attempt < 20) {
+			window.setTimeout(() => this.ensureExtensionsRegistered(attempt + 1), 50);
+		}
+	}
 
 	constructor(
 		leaf: WorkspaceLeaf,
@@ -45,6 +66,11 @@ export class MarkwhenView extends MarkdownView {
 				},
 			});
 			this.views[view]?.addClass('mw');
+			this.views[view]?.addEventListener('load', () => {
+				if (this.viewType === view) {
+					this.refreshVisualization();
+				}
+			});
 		}
 		this.codemirrorPlugin = ViewPlugin.fromClass(MarkwhenCodemirrorPlugin);
 	}
@@ -90,6 +116,7 @@ export class MarkwhenView extends MarkdownView {
 		if (!frame) {
 			return;
 		}
+		const rawText = this.getCodeMirror()?.state.doc.sliceString(0) ?? this.data;
 		frame.contentWindow?.postMessage(
 			{
 				type: 'appState',
@@ -104,13 +131,16 @@ export class MarkwhenView extends MarkdownView {
 				type: 'markwhenState',
 				request: true,
 				id: `markwhen_${this.updateId++}`,
-				params: getMarkwhenState(mw, this.data),
+				params: getMarkwhenState(mw, rawText),
 			},
 			'*'
 		);
 	}
 
 	registerExtensions() {
+		if (this.extensionsRegistered) {
+			return;
+		}
 		const cm = this.getCodeMirror();
 		if (cm) {
 			this.editorView = cm;
@@ -129,6 +159,7 @@ export class MarkwhenView extends MarkdownView {
 					parseListener,
 				]),
 			});
+			this.extensionsRegistered = true;
 		}
 	}
 
@@ -142,9 +173,8 @@ export class MarkwhenView extends MarkdownView {
 		// Meanwhile the extensions aren't
 		// registered when I don't use setTimeout. Is there another hook I can use?
 		// Other than onLoadFile or onOpen?
-		setTimeout(() => {
-			this.registerExtensions();
-		}, 500);
+		this.refreshVisualization();
+		this.ensureExtensionsRegistered();
 	}
 
 	async onOpen() {
@@ -153,8 +183,21 @@ export class MarkwhenView extends MarkdownView {
 		const action = (viewType: ViewType) => async (evt: MouseEvent) => {
 			if (evt.metaKey || evt.ctrlKey) {
 				await this.split(viewType);
-			} else if (this.viewType !== viewType) {
+				return;
+			}
+
+			if (this.viewType !== viewType) {
 				await this.setViewType(viewType);
+			}
+
+			// Always resync on explicit view-button click, even if already active.
+			this.refreshVisualization();
+			if (viewType === 'calendar') {
+				window.setTimeout(() => {
+					if (this.viewType === 'calendar') {
+						this.refreshVisualization();
+					}
+				}, 120);
 			}
 		};
 
@@ -201,6 +244,7 @@ export class MarkwhenView extends MarkdownView {
 		);
 
 		this.setViewType(this.viewType);
+		this.ensureExtensionsRegistered();
 		this.registerDomEvent(window, 'message', async (e) => {
 			if (
 				e.source == this.activeFrame()?.contentWindow &&
@@ -227,7 +271,7 @@ export class MarkwhenView extends MarkdownView {
 					e.data.type === 'markwhenState' ||
 					e.data.type === 'appState'
 				) {
-					this.updateVisualization(this.getMw()!);
+					this.refreshVisualization();
 				} else if (e.data.type === 'editEventDateRange') {
 					const events = this.getMw()?.events;
 					if (!events) {
@@ -316,7 +360,7 @@ export class MarkwhenView extends MarkdownView {
 				}
 			}
 		}
-		this.updateVisualization(this.getMw()!);
+		this.refreshVisualization();
 	}
 
 	getCodeMirror(): EditorView | undefined {
