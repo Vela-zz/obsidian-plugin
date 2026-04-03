@@ -8,8 +8,8 @@ export function getMarkwhenState(
 ): MarkwhenState | undefined {
 	return {
 		rawText,
-		parsed: mw,
-		transformed: mw.events,
+		parsed: mw as unknown as MarkwhenState['parsed'],
+		transformed: mw.events as unknown as MarkwhenState['transformed'],
 	};
 }
 

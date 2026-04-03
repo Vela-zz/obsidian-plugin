@@ -7,7 +7,6 @@ import {
 	ParseResult,
 	get,
 	isEvent,
-	parse,
 	toDateRange,
 } from '@markwhen/parser';
 import { EditorView, ViewPlugin } from '@codemirror/view';
@@ -20,6 +19,7 @@ import {
 import { type ViewType, getTemplateURL } from './templates';
 import { editEventDateRange } from './utils/dateTextInterpolation';
 import { dateRangeToString } from './utils/dateTimeUtilities';
+import { parseWithEnhancements } from './utils/parseWithEnhancements';
 
 export class MarkwhenView extends MarkdownView {
 	readonly plugin: MarkwhenPlugin;
@@ -327,7 +327,7 @@ export class MarkwhenView extends MarkdownView {
 	getMw(): ParseResult | undefined {
 		return (
 			this.getCodeMirror()?.plugin(this.codemirrorPlugin)?.markwhen ??
-			parse(this.data)
+			parseWithEnhancements(this.data)
 		);
 	}
 
